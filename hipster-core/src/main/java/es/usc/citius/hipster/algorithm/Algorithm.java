@@ -16,206 +16,259 @@
 
 package es.usc.citius.hipster.algorithm;
 
-
 import es.usc.citius.hipster.model.Node;
 import es.usc.citius.hipster.util.Predicate;
 
 import java.util.*;
 
 /**
- * Abstract class implemented by each search algorithm. This class provides basic methods
- * to each algorithm for searching or printing detailed information about the search.
+ * Abstract class implemented by each search algorithm. This class provides
+ * basic methods to each algorithm for searching or printing detailed
+ * information about the search.
  *
- * @param <A> type of the actions ({@code Void} if actions are not explicit).
- * @param <S> type of the states.
- * @param <N> type of the nodes.
+ * @param <A>
+ *            type of the actions ({@code Void} if actions are not explicit).
+ * @param <S>
+ *            type of the states.
+ * @param <N>
+ *            type of the nodes.
  *
- * @author Pablo Rodríguez Mier <<a href="mailto:pablo.rodriguez.mier@usc.es">pablo.rodriguez.mier@usc.es</a>>
+ * @author Pablo Rodríguez Mier <<a href=
+ *         "mailto:pablo.rodriguez.mier@usc.es">pablo.rodriguez.mier@usc.es</a>>
  */
-public abstract class Algorithm<A,S,N extends Node<A,S,N>> implements Iterable<N> {
+public abstract class Algorithm<A, S, N extends Node<A, S, N>> implements Iterable<N> {
 
+	/**
+	 * Holds information about the search process.
+	 */
+	public final class SearchResult {
+		private int iterations;
+		private Collection<N> goalNodes;
+		private long elapsed;
+		private long queued = -1;
+		private double avgQueueSize;
 
-    /**
-     * Holds information about the search process.
-     */
-    public final class SearchResult {
-        private int iterations;
-        private Collection<N> goalNodes;
-        private long elapsed;
+		public SearchResult(N goalNode, int iterations, long elapsed) {
+			this.goalNodes = Collections.singletonList(goalNode);
+			this.iterations = iterations;
+			this.elapsed = elapsed;
+		}
 
+		public SearchResult(Collection<N> goalNodes, int iterations, long elapsed) {
+			this.goalNodes = goalNodes;
+			this.iterations = iterations;
+			this.elapsed = elapsed;
+		}
 
-        public SearchResult(N goalNode, int iterations, long elapsed) {
-            this.goalNodes = Collections.singletonList(goalNode);
-            this.iterations = iterations;
-            this.elapsed = elapsed;
-        }
+		public SearchResult(N goalNode, int iterations, long elapsed, long queued) {
+			this(Collections.singletonList(goalNode), iterations, elapsed, queued, -1);
+		}
 
-        public SearchResult(Collection<N> goalNodes, int iterations, long elapsed) {
-            this.goalNodes = goalNodes;
-            this.iterations = iterations;
-            this.elapsed = elapsed;
-        }
+		public SearchResult(Collection<N> goalNodes, int iterations, long elapsed, long queued) {
+			this(goalNodes, iterations, elapsed, queued, -1);
+		}
 
-        /**
-         * @return the elapsed time (in milliseconds) between the begin of the search and the
-         * search result generation.
-         */
-        public long getElapsed() {
-            return elapsed;
-        }
+		public SearchResult(N goalNode, int iterations, long elapsed, long queued, double avgQueueSize) {
+			this(Collections.singletonList(goalNode), iterations, elapsed, queued, avgQueueSize);
+		}
 
-        /**
-         * Number of iterations performed by the search algorithm.
-         * @return number of iterations.
-         */
-        public int getIterations() {
-            return iterations;
-        }
+		public SearchResult(Collection<N> goalNodes, int iterations, long elapsed, long queued, double avgQueueSize) {
+			this.goalNodes = goalNodes;
+			this.iterations = iterations;
+			this.elapsed = elapsed;
+			this.queued = queued;
+			this.avgQueueSize = avgQueueSize;
+		}
 
-        /**
-         * @return goal node.
-         */
-        public N getGoalNode() {
-            return goalNodes.iterator().next();
-        }
+		/**
+		 * @return the elapsed time (in milliseconds) between the begin of the
+		 *         search and the search result generation.
+		 */
+		public long getElapsed() {
+			return elapsed;
+		}
 
-        public Collection<N> getGoalNodes() {
-            return goalNodes;
-        }
+		/**
+		 * Number of iterations performed by the search algorithm.
+		 * 
+		 * @return number of iterations.
+		 */
+		public int getIterations() {
+			return iterations;
+		}
 
-        public List<List<S>> getOptimalPaths() {
-            List<List<S>> paths = new ArrayList<List<S>>(goalNodes.size());
-            for(N goalNode : goalNodes){
-                paths.add(recoverStatePath(goalNode));
-            }
+		/**
+		 * total number of elements that have been enqueued, if the algorithm
+		 * uses a queue, -1 otherwise
+		 * 
+		 * @return num of queued elements
+		 */
+		public long getTotalEnQueuedNodes() {
+			return queued;
+		}
 
-            return paths;
-        }
+		/**
+		 * computes the average queue size during a search
+		 * 
+		 * @return avg. queue size
+		 */
+		public double getAverageQueueSize() {
+			return avgQueueSize;
+		}
 
-        @Override
-        public String toString() {
-            final String ls = System.getProperty("line.separator");
-            StringBuilder builder = new StringBuilder();
-            builder.append("Total solutions: ").append(goalNodes.size()).append(ls);
-            builder.append("Total time: ").append(getElapsed()).append(" ms").append(ls);
-            builder.append("Total number of iterations: ").append(getIterations()).append(ls);
-            // Take solutions
-            int solution=1;
-            for(N goalNode : goalNodes){
-                builder.append("+ Solution ").append(solution).append(": ").append(ls);
-                builder.append(" - States: ").append(ls);
-                builder.append("\t").append(recoverStatePath(goalNode).toString()).append(ls);
-                builder.append(" - Actions: ").append(ls);
-                builder.append("\t").append(recoverActionPath(goalNode).toString()).append(ls);
-                builder.append(" - Search information: ").append(ls);
-                builder.append("\t").append(goalNode.toString()).append(ls);
-                solution++;
-            }
-            return builder.toString();
-        }
-    }
+		/**
+		 * @return goal node.
+		 */
+		public N getGoalNode() {
+			return goalNodes.iterator().next();
+		}
 
-    public interface SearchListener<N> {
-        void handle(N node);
-    }
+		public Collection<N> getGoalNodes() {
+			return goalNodes;
+		}
 
-    /**
-     * Run the algorithm until the goal is found or no more states are
-     * available.
-     * @return SearchResult with the information of the search
-     */
-    public SearchResult search(final S goalState){
-        return search(new Predicate<N>() {
-            @Override
-            public boolean apply(N n) {
-                if (goalState != null) {
-                    return n.state().equals(goalState);
-                }
-                return false;
-            }
-        });
-    }
+		public List<List<S>> getOptimalPaths() {
+			List<List<S>> paths = new ArrayList<List<S>>(goalNodes.size());
+			for (N goalNode : goalNodes) {
+				paths.add(recoverStatePath(goalNode));
+			}
 
+			return paths;
+		}
 
-    /**
-     * Executes the search algorithm until the predicate condition is
-     * satisfied or there are no more nodes to explore.
-     *
-     * @param condition predicate with the boolean condition.
-     * @return {@link es.usc.citius.hipster.algorithm.Algorithm.SearchResult with information about the search}
-     */
-    public SearchResult search(Predicate<N> condition){
-        int iteration = 0;
-        Iterator<N> it = iterator();
-        long begin = System.currentTimeMillis();
-        N currentNode = null;
-        while(it.hasNext()){
-            iteration++;
-            currentNode = it.next();
-            if (condition.apply(currentNode)) {
-                break;
-            }
+		@Override
+		public String toString() {
+			final String ls = System.getProperty("line.separator");
+			StringBuilder builder = new StringBuilder();
+			builder.append("Total solutions: ").append(goalNodes.size()).append(ls);
+			builder.append("Total time: ").append(getElapsed()).append(" ms").append(ls);
+			builder.append("Total number of iterations: ").append(getIterations()).append(ls);
+			// Take solutions
+			int solution = 1;
+			for (N goalNode : goalNodes) {
+				builder.append("+ Solution ").append(solution).append(": ").append(ls);
+				builder.append(" - States: ").append(ls);
+				builder.append("\t").append(recoverStatePath(goalNode).toString()).append(ls);
+				builder.append(" - Actions: ").append(ls);
+				builder.append("\t").append(recoverActionPath(goalNode).toString()).append(ls);
+				builder.append(" - Search information: ").append(ls);
+				builder.append("\t").append(goalNode.toString()).append(ls);
+				solution++;
+			}
+			return builder.toString();
+		}
+	}
 
-        }
-        long end = System.currentTimeMillis();
-        return new SearchResult(currentNode, iteration, end - begin);
-    }
+	public interface SearchListener<N> {
+		void handle(N node);
+	}
 
-    /**
-     * <p>
-     * Executes the search algorithm and invokes the method
-     * {@link SearchListener#handle(Object)} passing the current
-     * explored node to the listener.
-     * </p>
-     *
-     * <pre class="prettyprint">
-     *  {@code Hipster.createDijkstra(problem).search(new Algorithm.SearchListener() {
-     *      @Override
-     *          public void handle(Node node) {
-     *              // Do something with the node.
-     *          }
-     *      });
-     *  }
-     * </pre>
-     *
-     * @param listener listener used to receive the explored nodes.
-     */
-    public void search(SearchListener<N> listener){
-        Iterator<N> it = iterator();
-        while(it.hasNext()){
-            listener.handle(it.next());
-        }
-    }
+	/**
+	 * Run the algorithm until the goal is found or no more states are
+	 * available.
+	 * 
+	 * @return SearchResult with the information of the search
+	 */
+	public SearchResult search(final S goalState) {
+		return search(new Predicate<N>() {
+			@Override
+			public boolean apply(N n) {
+				if (goalState != null) {
+					return n.state().equals(goalState);
+				}
+				return false;
+			}
+		});
+	}
 
-    /**
-     * Returns a path with all the states of the path.
-     *
-     * @param <S> type of the state.
-     * @param <N> type of the node.
-     * @return a list with the states of the path, from the initial state
-     * to the state of the provided node ({@link es.usc.citius.hipster.model.Node#state()}).
-     */
-    public static <S, N extends Node<?,S,N>>  List<S> recoverStatePath(N node){
-        List<S> states = new LinkedList<S>();
-        for(N n : node.path()){
-            states.add(n.state());
-        }
-        return states;
-    }
+	/**
+	 * Executes the search algorithm until the predicate condition is satisfied
+	 * or there are no more nodes to explore.
+	 *
+	 * @param condition
+	 *            predicate with the boolean condition.
+	 * @return {@link es.usc.citius.hipster.algorithm.Algorithm.SearchResult
+	 *         with information about the search}
+	 */
+	public SearchResult search(Predicate<N> condition) {
+		int iteration = 0;
+		Iterator<N> it = iterator();
+		long begin = System.currentTimeMillis();
+		N currentNode = null;
+		while (it.hasNext()) {
+			iteration++;
+			currentNode = it.next();
+			if (condition.apply(currentNode)) {
+				break;
+			}
 
-    /**
-     * Returns a path of the actions applied from the initial state
-     * to the state of the provided node ({@link es.usc.citius.hipster.model.Node#state()}).
-     *
-     * @param <A> type of the actions.
-     * @param <N> type of the nodes.
-     * @return list with the ordered actions.
-     */
-    public static <A, N extends Node<A,?,N>>  List<A> recoverActionPath(N node){
-        List<A> actions = new LinkedList<A>();
-        for(N n : node.path()){
-            if (n.action() != null) actions.add(n.action());
-        }
-        return actions;
-    }
+		}
+		long end = System.currentTimeMillis();
+		return new SearchResult(currentNode, iteration, end - begin);
+	}
+
+	/**
+	 * <p>
+	 * Executes the search algorithm and invokes the method
+	 * {@link SearchListener#handle(Object)} passing the current explored node
+	 * to the listener.
+	 * </p>
+	 *
+	 * <pre class="prettyprint">
+	 *  {@code Hipster.createDijkstra(problem).search(new Algorithm.SearchListener() {
+	 *      &#64;Override
+	 *          public void handle(Node node) {
+	 *              // Do something with the node.
+	 *          }
+	 *      });
+	 *  }
+	 * </pre>
+	 *
+	 * @param listener
+	 *            listener used to receive the explored nodes.
+	 */
+	public void search(SearchListener<N> listener) {
+		Iterator<N> it = iterator();
+		while (it.hasNext()) {
+			listener.handle(it.next());
+		}
+	}
+
+	/**
+	 * Returns a path with all the states of the path.
+	 *
+	 * @param <S>
+	 *            type of the state.
+	 * @param <N>
+	 *            type of the node.
+	 * @return a list with the states of the path, from the initial state to the
+	 *         state of the provided node
+	 *         ({@link es.usc.citius.hipster.model.Node#state()}).
+	 */
+	public static <S, N extends Node<?, S, N>> List<S> recoverStatePath(N node) {
+		List<S> states = new LinkedList<S>();
+		for (N n : node.path()) {
+			states.add(n.state());
+		}
+		return states;
+	}
+
+	/**
+	 * Returns a path of the actions applied from the initial state to the state
+	 * of the provided node ({@link es.usc.citius.hipster.model.Node#state()}).
+	 *
+	 * @param <A>
+	 *            type of the actions.
+	 * @param <N>
+	 *            type of the nodes.
+	 * @return list with the ordered actions.
+	 */
+	public static <A, N extends Node<A, ?, N>> List<A> recoverActionPath(N node) {
+		List<A> actions = new LinkedList<A>();
+		for (N n : node.path()) {
+			if (n.action() != null)
+				actions.add(n.action());
+		}
+		return actions;
+	}
 }

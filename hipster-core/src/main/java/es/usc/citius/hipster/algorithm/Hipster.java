@@ -74,6 +74,11 @@ public final class Hipster {
 		return new AStar<A, S, C, N>(components.getInitialNode(), components.getExpander());
 	}
 
+	public static <A, S, C extends Comparable<C>, N extends HeuristicNode<A, S, C, N>> AStar<A, S, C, N> createAStar(
+			SearchProblem<A, S, N> components, C upperBoundForOptimalPath) {
+		return new AStar<A, S, C, N>(components.getInitialNode(), components.getExpander(), upperBoundForOptimalPath);
+	}
+
 	/**
 	 * Instantiates a Dijkstra algorithm (A* algorithm with no heuristic
 	 * function) given a problem definition.
@@ -249,8 +254,8 @@ public final class Hipster {
 	public static <A, S, N extends HeuristicNode<A, S, Double, N>> AnnealingSearch<A, S, N> createAnnealingSearch(
 			SearchProblem<A, S, N> components, Double alpha, Double minTemp,
 			AcceptanceProbability acceptanceProbability, SuccessorFinder<A, S, N> successorFinder) {
-		return new AnnealingSearch<A, S, N>(components.getInitialNode(), components.getExpander(), alpha,
-				minTemp, acceptanceProbability, successorFinder);
+		return new AnnealingSearch<A, S, N>(components.getInitialNode(), components.getExpander(), alpha, minTemp,
+				acceptanceProbability, successorFinder);
 	}
 
 	/**
