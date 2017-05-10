@@ -47,6 +47,7 @@ public abstract class Algorithm<A, S, N extends Node<A, S, N>> implements Iterab
 		private long elapsed;
 		private long queued = -1;
 		private double avgQueueSize;
+		private long traversedEdges;
 
 		public SearchResult(N goalNode, int iterations, long elapsed) {
 			this.goalNodes = Collections.singletonList(goalNode);
@@ -73,11 +74,26 @@ public abstract class Algorithm<A, S, N extends Node<A, S, N>> implements Iterab
 		}
 
 		public SearchResult(Collection<N> goalNodes, int iterations, long elapsed, long queued, double avgQueueSize) {
+			this(goalNodes, iterations, elapsed, queued, avgQueueSize, -1);
+		}
+
+		public SearchResult(N goalNode, int iterations, long elapsed, long queued, double avgQueueSize,
+				long traversedEdges) {
+			this(Collections.singletonList(goalNode), iterations, elapsed, queued, avgQueueSize, traversedEdges);
+		}
+
+		public long getTraversedEdges() {
+			return traversedEdges;
+		}
+
+		public SearchResult(Collection<N> goalNodes, int iterations, long elapsed, long queued, double avgQueueSize,
+				long traversedEdges) {
 			this.goalNodes = goalNodes;
 			this.iterations = iterations;
 			this.elapsed = elapsed;
 			this.queued = queued;
 			this.avgQueueSize = avgQueueSize;
+			this.traversedEdges = traversedEdges;
 		}
 
 		/**

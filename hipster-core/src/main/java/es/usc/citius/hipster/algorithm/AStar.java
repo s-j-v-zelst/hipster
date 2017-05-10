@@ -60,6 +60,7 @@ public class AStar<A, S, C extends Comparable<C>, N extends HeuristicNode<A, S, 
 	private long queued = 0;
 	private long queueSizeCummulative = 0;
 	private final C upperBoundForOptimalPath;
+	private long traversedEdges;
 
 	/**
 	 * Default constructor for ADStarForward. Requires the initial state, the
@@ -139,6 +140,7 @@ public class AStar<A, S, C extends Comparable<C>, N extends HeuristicNode<A, S, 
 
 			// Analyze the cost of each movement from the current node
 			for (N successorNode : expander.expand(current)) {
+				traversedEdges++;
 				N successorOpen = open.get(successorNode.state());
 				if (successorOpen != null) {
 					if (successorOpen.getScore().compareTo(successorNode.getScore()) <= 0) {
@@ -251,7 +253,8 @@ public class AStar<A, S, C extends Comparable<C>, N extends HeuristicNode<A, S, 
 	public SearchResult search(Predicate<N> condition) {
 		SearchResult r = super.search(condition);
 		double avgQueueSize = queueSizeCummulative / r.getIterations();
-		return new Algorithm.SearchResult(r.getGoalNodes(), r.getIterations(), r.getElapsed(), queued, avgQueueSize);
+		return new Algorithm.SearchResult(r.getGoalNodes(), r.getIterations(), r.getElapsed(), queued, avgQueueSize,
+				traversedEdges);
 
 	}
 }
